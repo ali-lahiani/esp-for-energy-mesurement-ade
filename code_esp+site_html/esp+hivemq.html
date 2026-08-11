@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ESP32 Energy Meter Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- MQTT.js Browser Library CDN -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-6">
+
+  <!-- Header -->
+  <div class="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 border-b border-gray-800 pb-4">
+    <div>
+      <h1 class="text-3xl font-bold text-white tracking-wide">⚡ Energy Meter Dashboard</h1>
+      <p class="text-gray-400 text-sm mt-1">Real-time ADE9000 Telemetry via HiveMQ Cloud</p>
+    </div>
+    <div class="mt-4 md:mt-0 flex items-center space-x-3">
+      <span class="text-sm font-medium text-gray-400">Status:</span>
+      <span id="status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+        Connecting...
+      </span>
+    </div>
+  </div>
+
+  <!-- Cards Grid -->
+  <div class="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <!-- Phase A Card -->
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-lg flex flex-col justify-between">
+      <div>
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-red-400">Phase A</h2>
+          <span class="text-xs bg-red-500/10 text-red-400 px-2.5 py-1 rounded-md font-mono">energy/phaseA</span>
+        </div>
+        <div class="space-y-2.5 font-mono text-sm">
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Voltage:</span>
+            <span id="vA" class="font-bold text-white">0.00 V</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Current:</span>
+            <span id="iA" class="font-bold text-red-400">0.000 A</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Power:</span>
+            <span id="pA" class="font-bold text-emerald-400">0.00 W</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Power Factor:</span>
+            <span id="pfA" class="text-white">0.00</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Frequency:</span>
+            <span id="freqA" class="text-white">0.00 Hz</span>
+          </div>
+        </div>
+      </div>
+      <!-- Phase A Current Plot -->
+      <div class="mt-5 pt-3 border-t border-gray-700/60">
+        <p class="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Current Curve (A)</p>
+        <div class="h-36 w-full">
+          <canvas id="chartA"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase B Card -->
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-lg flex flex-col justify-between">
+      <div>
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-yellow-400">Phase B</h2>
+          <span class="text-xs bg-yellow-500/10 text-yellow-400 px-2.5 py-1 rounded-md font-mono">energy/phaseB</span>
+        </div>
+        <div class="space-y-2.5 font-mono text-sm">
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Voltage:</span>
+            <span id="vB" class="font-bold text-white">0.00 V</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Current:</span>
+            <span id="iB" class="font-bold text-yellow-400">0.000 A</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Power:</span>
+            <span id="pB" class="font-bold text-emerald-400">0.00 W</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Power Factor:</span>
+            <span id="pfB" class="text-white">0.00</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Frequency:</span>
+            <span id="freqB" class="text-white">0.00 Hz</span>
+          </div>
+        </div>
+      </div>
+      <!-- Phase B Current Plot -->
+      <div class="mt-5 pt-3 border-t border-gray-700/60">
+        <p class="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Current Curve (A)</p>
+        <div class="h-36 w-full">
+          <canvas id="chartB"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Phase C Card -->
+    <div class="bg-gray-800 rounded-xl p-5 border border-gray-700 shadow-lg flex flex-col justify-between">
+      <div>
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold text-blue-400">Phase C</h2>
+          <span class="text-xs bg-blue-500/10 text-blue-400 px-2.5 py-1 rounded-md font-mono">energy/phaseC</span>
+        </div>
+        <div class="space-y-2.5 font-mono text-sm">
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Voltage:</span>
+            <span id="vC" class="font-bold text-white">0.00 V</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Current:</span>
+            <span id="iC" class="font-bold text-blue-400">0.000 A</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Power:</span>
+            <span id="pC" class="font-bold text-emerald-400">0.00 W</span>
+          </div>
+          <div class="flex justify-between border-b border-gray-700/50 pb-1">
+            <span class="text-gray-400">Power Factor:</span>
+            <span id="pfC" class="text-white">0.00</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-gray-400">Frequency:</span>
+            <span id="freqC" class="text-white">0.00 Hz</span>
+          </div>
+        </div>
+      </div>
+      <!-- Phase C Current Plot -->
+      <div class="mt-5 pt-3 border-t border-gray-700/60">
+        <p class="text-xs font-semibold text-gray-400 mb-2 uppercase tracking-wider">Current Curve (A)</p>
+        <div class="h-36 w-full">
+          <canvas id="chartC"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Neutral Line Banner -->
+  <div class="max-w-6xl mx-auto mt-6 bg-gray-800 rounded-xl p-4 border border-gray-700 flex justify-between items-center font-mono">
+    <span class="text-gray-400 font-sans font-medium">Neutral Current (energy/neutral):</span>
+    <span id="iN" class="text-xl font-bold text-cyan-400">0.000 A</span>
+  </div>
+
+  <!-- JavaScript Setup -->
+  <script>
+    const MAX_DATA_POINTS = 20; // Number of history points displayed on graph
+
+    // --- Chart Creator Helper Function ---
+    function createCurrentChart(canvasId, lineColor, fillColor) {
+      const ctx = document.getElementById(canvasId).getContext('2d');
+      return new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: [],
+          datasets: [{
+            label: 'Current (A)',
+            data: [],
+            borderColor: lineColor,
+            backgroundColor: fillColor,
+            borderWidth: 2,
+            fill: true,
+            tension: 0.3,
+            pointRadius: 2,
+            pointHoverRadius: 5
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              callbacks: {
+                label: (ctx) => `Current: ${ctx.parsed.y.toFixed(3)} A`
+              }
+            }
+          },
+          scales: {
+            x: {
+              display: true,
+              grid: { display: false },
+              ticks: { color: '#9ca3af', font: { size: 10 } }
+            },
+            y: {
+              display: true,
+              beginAtZero: true,
+              grid: { color: 'rgba(255, 255, 255, 0.05)' },
+              ticks: { color: '#9ca3af', font: { size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    // Initialize 3 charts for Phase A, B, and C
+    const chartA = createCurrentChart('chartA', '#f87171', 'rgba(248, 113, 113, 0.15)');
+    const chartB = createCurrentChart('chartB', '#facc15', 'rgba(250, 204, 21, 0.15)');
+    const chartC = createCurrentChart('chartC', '#60a5fa', 'rgba(96, 165, 250, 0.15)');
+
+    // Helper to update a chart with smooth scrolling data
+    function updateChartData(chart, timestamp, value) {
+      chart.data.labels.push(timestamp);
+      chart.data.datasets[0].data.push(value);
+
+      if (chart.data.labels.length > MAX_DATA_POINTS) {
+        chart.data.labels.shift();
+        chart.data.datasets[0].data.shift();
+      }
+
+      chart.update('none'); // Fast update mode
+    }
+
+    // --- HiveMQ WebSockets Connection ---
+    const options = {
+      protocol: 'wss',
+      host: '19116538ee4141cfb8ae80def4474ba4.s1.eu.hivemq.cloud',
+      port: 8884,
+      path: '/mqtt',
+      username: 'ali',
+      password: '123456789',
+      clientId: 'WebDashboard_' + Math.random().toString(16).substr(2, 8)
+    };
+
+    const statusBadge = document.getElementById('status-badge');
+    const client = mqtt.connect(`wss://${options.host}:${options.port}${options.path}`, options);
+
+    client.on('connect', () => {
+      console.log('Connected to HiveMQ Cloud via WebSockets!');
+      statusBadge.textContent = 'Connected';
+      statusBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+
+      client.subscribe('energy/#', (err) => {
+        if (!err) console.log('Subscribed to energy/#');
+      });
+    });
+
+    client.on('offline', () => {
+      statusBadge.textContent = 'Disconnected';
+      statusBadge.className = 'px-3 py-1 rounded-full text-xs font-semibold bg-red-500/20 text-red-400 border border-red-500/30';
+    });
+
+    // --- Message Receiver ---
+    client.on('message', (topic, message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        if (topic === 'energy/phaseA') {
+          document.getElementById('vA').innerText = `${data.vRms.toFixed(2)} V`;
+          document.getElementById('iA').innerText = `${data.iRms.toFixed(3)} A`;
+          document.getElementById('pA').innerText = `${data.power.toFixed(2)} W`;
+          document.getElementById('pfA').innerText = data.pf.toFixed(2);
+          document.getElementById('freqA').innerText = `${data.freq.toFixed(2)} Hz`;
+          updateChartData(chartA, timeStr, data.iRms);
+        } 
+        else if (topic === 'energy/phaseB') {
+          document.getElementById('vB').innerText = `${data.vRms.toFixed(2)} V`;
+          document.getElementById('iB').innerText = `${data.iRms.toFixed(3)} A`;
+          document.getElementById('pB').innerText = `${data.power.toFixed(2)} W`;
+          document.getElementById('pfB').innerText = data.pf.toFixed(2);
+          document.getElementById('freqB').innerText = `${data.freq.toFixed(2)} Hz`;
+          updateChartData(chartB, timeStr, data.iRms);
+        } 
+        else if (topic === 'energy/phaseC') {
+          document.getElementById('vC').innerText = `${data.vRms.toFixed(2)} V`;
+          document.getElementById('iC').innerText = `${data.iRms.toFixed(3)} A`;
+          document.getElementById('pC').innerText = `${data.power.toFixed(2)} W`;
+          document.getElementById('pfC').innerText = data.pf.toFixed(2);
+          document.getElementById('freqC').innerText = `${data.freq.toFixed(2)} Hz`;
+          updateChartData(chartC, timeStr, data.iRms);
+        } 
+        else if (topic === 'energy/neutral') {
+          document.getElementById('iN').innerText = `${data.iRmsN.toFixed(3)} A`;
+        }
+      } catch (err) {
+        console.error('Failed to parse JSON payload:', err);
+      }
+    });
+  </script>
+</body>
+</html>

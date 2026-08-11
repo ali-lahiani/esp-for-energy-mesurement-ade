@@ -131,11 +131,12 @@ void connectWiFi() {
   IPAddress local_IP(192, 168, 1, 100);
   IPAddress gateway(192, 168, 1, 1);
   IPAddress subnet(255, 255, 255, 0);
-  WiFi.config(local_IP, gateway, subnet);
+  IPAddress dns(192, 168, 1, 1);
+  WiFi.config(local_IP, gateway, subnet, dns);
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
-  for (int i = 0; i < 30; i++) {
+  for (int i = 0; i < 60; i++) {
     delay(1000);
     int status = WiFi.status();
     Serial.printf("  [%ds] Status = %d", i + 1, status);
